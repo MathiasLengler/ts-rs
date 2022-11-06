@@ -18,6 +18,9 @@ pub(crate) fn named(
 ) -> Result<DerivedTS> {
     let mut formatted_fields = Vec::new();
     let mut dependencies = Dependencies::default();
+
+    let mut intersection_type_names = vec![];
+
     if let Some(tag) = &attr.tag {
         let formatted = format!("{}: \"{}\",", tag, name);
         formatted_fields.push(quote! {
@@ -32,20 +35,33 @@ pub(crate) fn named(
             field,
             &attr.rename_all,
             generics,
+            &mut intersection_type_names,
         )?;
     }
 
     let fields = quote!(<[String]>::join(&[#(#formatted_fields),*], " "));
     let generic_args = format_generics(&mut dependencies, generics);
 
+    let intersection_types = quote!(vec![#(#intersection_type_names),*].join("&"));
+
     Ok(DerivedTS {
-        inline: quote! {
-            format!(
-                "{{ {} }}",
-                #fields,
-            )
+        inline: if intersection_type_names.is_empty() {
+            quote! {
+                format!(
+                    "{{ {} }}",
+                    #fields,
+                )
+            }
+        } else {
+            quote! {
+                format!(
+                    "{{ {} }} & {}",
+                    #fields,
+                    #intersection_types
+                )
+            }
         },
-        decl: quote!(format!("interface {}{} {}", #name, #generic_args, Self::inline())),
+        decl: quote!(format!("type {}{} = {};", #name, #generic_args, Self::inline())),
         inline_flattened: Some(fields),
         name: name.to_owned(),
         dependencies,
@@ -61,6 +77,7 @@ fn format_field(
     field: &Field,
     rename_all: &Option<Inflection>,
     generics: &Generics,
+    intersection_type_names: &mut Vec<TokenStream>,
 ) -> Result<()> {
     let FieldAttr {
         type_override,
@@ -88,8 +105,8 @@ fn format_field(
             _ => {}
         }
 
-        formatted_fields.push(quote!(<#ty as ts_rs::TS>::inline_flattened()));
-        dependencies.append_from(ty);
+        intersection_type_names.push(quote!(<#ty as ts_rs::TS>::name()));
+        dependencies.push_or_append_from(ty);
         return Ok(());
     }
 
@@ -119,22 +136,22 @@ fn format_field(
 fn extract_option_argument(ty: &Type) -> Result<&Type> {
     match ty {
         Type::Path(type_path)
-            if type_path.qself.is_none()
-                && type_path.path.leading_colon.is_none()
-                && type_path.path.segments.len() == 1
-                && type_path.path.segments[0].ident == "Option" =>
-        {
-            let segment = &type_path.path.segments[0];
-            match &segment.arguments {
-                PathArguments::AngleBracketed(args) if args.args.len() == 1 => {
-                    match &args.args[0] {
-                        GenericArgument::Type(inner_ty) => Ok(inner_ty),
-                        _ => syn_err!("`Option` argument must be a type"),
+        if type_path.qself.is_none()
+            && type_path.path.leading_colon.is_none()
+            && type_path.path.segments.len() == 1
+            && type_path.path.segments[0].ident == "Option" =>
+            {
+                let segment = &type_path.path.segments[0];
+                match &segment.arguments {
+                    PathArguments::AngleBracketed(args) if args.args.len() == 1 => {
+                        match &args.args[0] {
+                            GenericArgument::Type(inner_ty) => Ok(inner_ty),
+                            _ => syn_err!("`Option` argument must be a type"),
+                        }
                     }
+                    _ => syn_err!("`Option` type must have a single generic argument"),
                 }
-                _ => syn_err!("`Option` type must have a single generic argument"),
             }
-        }
         _ => syn_err!("`optional` can only be used on an Option<T> type"),
     }
 }
