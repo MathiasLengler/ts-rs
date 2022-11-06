@@ -42,17 +42,12 @@ pub(crate) fn named(
     let fields = quote!(<[String]>::join(&[#(#formatted_fields),*], " "));
     let generic_args = format_generics(&mut dependencies, generics);
 
-    let intersection_types = quote!(vec![#(#intersection_type_names),*].join("&"));
+    let has_intersection_types = !intersection_type_names.is_empty();
 
     Ok(DerivedTS {
-        inline: if intersection_type_names.is_empty() {
-            quote! {
-                format!(
-                    "{{ {} }}",
-                    #fields,
-                )
-            }
-        } else {
+        inline: if has_intersection_types {
+            let intersection_types = quote!(vec![#(#intersection_type_names),*].join("&"));
+
             quote! {
                 format!(
                     "{{ {} }} & {}",
@@ -60,8 +55,19 @@ pub(crate) fn named(
                     #intersection_types
                 )
             }
+        } else {
+            quote! {
+                format!(
+                    "{{ {} }}",
+                    #fields,
+                )
+            }
         },
-        decl: quote!(format!("type {}{} = {};", #name, #generic_args, Self::inline())),
+        decl: if has_intersection_types {
+            quote!(format!("type {}{} = {};", #name, #generic_args, Self::inline()))
+        } else {
+            quote!(format!("interface {}{} {}", #name, #generic_args, Self::inline()))
+        },
         inline_flattened: Some(fields),
         name: name.to_owned(),
         dependencies,
