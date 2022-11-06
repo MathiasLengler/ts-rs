@@ -34,6 +34,7 @@ pub(crate) fn r#enum_def(s: &ItemEnum) -> syn::Result<DerivedTS> {
         });
     }
 
+    // TODO: export variants as named types
     let mut formatted_variants = Vec::new();
     let mut dependencies = Dependencies::default();
     for variant in &s.variants {
