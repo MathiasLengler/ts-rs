@@ -9,6 +9,7 @@ use crate::{
     types::generics::{format_generics, format_type},
     DerivedTS,
 };
+use crate::attr::Inflection;
 
 pub(crate) fn r#enum_def(s: &ItemEnum) -> syn::Result<DerivedTS> {
     let enum_attr: EnumAttr = EnumAttr::from_attrs(&s.attrs)?;
@@ -34,23 +35,42 @@ pub(crate) fn r#enum_def(s: &ItemEnum) -> syn::Result<DerivedTS> {
         });
     }
 
-    // TODO: export variants as named types
     let mut formatted_variants = Vec::new();
     let mut dependencies = Dependencies::default();
+    let mut variant_names = vec![];
     for variant in &s.variants {
         format_variant(
             &mut formatted_variants,
             &mut dependencies,
+            &mut variant_names,
             &enum_attr,
             variant,
             &s.generics,
         )?;
     }
 
+    let variant_names = variant_names.into_iter().map(|variant_name| {
+        format!("{name}{}", Inflection::Pascal.apply(&variant_name))
+    }).collect::<Vec<_>>();
+
+    let variant_types = variant_names.clone().into_iter().zip(formatted_variants.clone())
+        .map(|(variant_name, formatted_variant)| {
+            quote!(format!("export type {} = {};", #variant_name, #formatted_variant))
+        }).collect::<Vec<_>>();
+
     let generic_args = format_generics(&mut dependencies, &s.generics);
+
+    let decl = quote!(format!(
+        "type {}{} = {};\n{}",
+        #name,
+        #generic_args,
+        vec![#(#variant_names),*].join(" | "),
+        vec![#(#variant_types),*].join("\n"),
+    ));
+
     Ok(DerivedTS {
         inline: quote!([#(#formatted_variants),*].join(" | ")),
-        decl: quote!(format!("type {}{} = {};", #name, #generic_args, Self::inline())),
+        decl,
         inline_flattened: None,
         dependencies,
         name,
@@ -62,6 +82,7 @@ pub(crate) fn r#enum_def(s: &ItemEnum) -> syn::Result<DerivedTS> {
 fn format_variant(
     formatted_variants: &mut Vec<TokenStream>,
     dependencies: &mut Dependencies,
+    variant_names: &mut Vec<String>,
     enum_attr: &EnumAttr,
     variant: &Variant,
     generics: &Generics,
@@ -140,6 +161,7 @@ fn format_variant(
 
     dependencies.append(variant_dependencies);
     formatted_variants.push(formatted);
+    variant_names.push(name);
     Ok(())
 }
 
