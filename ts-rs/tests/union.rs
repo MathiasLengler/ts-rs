@@ -22,6 +22,9 @@ fn test_empty() {
 fn test_simple_enum() {
     assert_eq!(
         SimpleEnum::decl(),
-        r#"type SimpleEnum = "asdf" | "B" | "C";"#
+        r#"type SimpleEnum = SimpleEnumAsdf | SimpleEnumB | SimpleEnumC;
+export type SimpleEnumAsdf = "asdf";
+export type SimpleEnumB = "B";
+export type SimpleEnumC = "C";"#
     )
 }
