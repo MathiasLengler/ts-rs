@@ -36,12 +36,12 @@ fn test_stateful_enum() {
     assert_eq!(
         SimpleEnum::decl(),
         r#"type SimpleEnum = SimpleEnumA | SimpleEnumB | SimpleEnumC | SimpleEnumD | SimpleEnumE | SimpleEnumF;
-export type SimpleEnumA = { A: string };
-export type SimpleEnumB = { B: number };
+export type SimpleEnumA = { "A": string };
+export type SimpleEnumB = { "B": number };
 export type SimpleEnumC = "C";
-export type SimpleEnumD = { D: [string, number] };
-export type SimpleEnumE = { E: Foo };
-export type SimpleEnumF = { F: { a: number, b: string, } };"#
+export type SimpleEnumD = { "D": [string, number] };
+export type SimpleEnumE = { "E": Foo };
+export type SimpleEnumF = { "F": { a: number, b: string, } };"#
     );
     assert!(SimpleEnum::dependencies()
         .into_iter()

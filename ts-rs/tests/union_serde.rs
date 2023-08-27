@@ -34,17 +34,17 @@ fn test_serde_enum() {
     assert_eq!(
         SimpleEnum::decl(),
         r#"type SimpleEnum = SimpleEnumA | SimpleEnumB;
-export type SimpleEnumA = { kind: "A" };
-export type SimpleEnumB = { kind: "B" };"#
+export type SimpleEnumA = { "kind": "A" };
+export type SimpleEnumB = { "kind": "B" };"#
     );
     assert_eq!(
         ComplexEnum::decl(),
         r#"type ComplexEnum = ComplexEnumA | ComplexEnumB | ComplexEnumW | ComplexEnumF | ComplexEnumT;
-export type ComplexEnumA = { kind: "A" };
-export type ComplexEnumB = { kind: "B", data: { foo: string, bar: number, } };
-export type ComplexEnumW = { kind: "W", data: SimpleEnum };
-export type ComplexEnumF = { kind: "F", data: { nested: SimpleEnum, } };
-export type ComplexEnumT = { kind: "T", data: [number, SimpleEnum] };"#
+export type ComplexEnumA = { "kind": "A" };
+export type ComplexEnumB = { "kind": "B", "data": { foo: string, bar: number, } };
+export type ComplexEnumW = { "kind": "W", "data": SimpleEnum };
+export type ComplexEnumF = { "kind": "F", "data": { nested: SimpleEnum, } };
+export type ComplexEnumT = { "kind": "T", "data": [number, SimpleEnum] };"#
     );
 
     assert_eq!(
